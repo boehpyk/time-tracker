@@ -105,8 +105,6 @@ cargo test --manifest-path src-tauri/Cargo.toml --no-default-features test_start
 
 ## Architecture
 
-For a detailed walkthrough of the architecture, design decisions, lessons learned, and pitfalls to avoid, read **[FORboehpyk.md](./FORboehpyk.md)**.
-
 Key points at a glance:
 
 - `src-tauri/` — Rust/Tauri backend; all database access and system calls live here
