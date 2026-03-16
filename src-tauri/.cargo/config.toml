@@ -1,0 +1,4 @@
+[env]
+PKG_CONFIG_PATH = "/tmp/devlibs/extracted/usr/lib/x86_64-linux-gnu/pkgconfig:/tmp/devlibs/extracted/usr/share/pkgconfig"
+C_INCLUDE_PATH = "/tmp/devlibs/extracted/usr/include"
+CPLUS_INCLUDE_PATH = "/tmp/devlibs/extracted/usr/include"

@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#6366f1',
+  description TEXT,
+  archived INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  archived INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS time_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  notes TEXT,
+  archived INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  active_entry_id INTEGER REFERENCES time_entries(id) ON DELETE SET NULL
+);
+
+INSERT OR IGNORE INTO app_state (id, active_entry_id) VALUES (1, NULL);
