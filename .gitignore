@@ -45,3 +45,9 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Project docs / AI tooling
+docs/
+.claude/
+CLAUDE.md
+FORboehpyk.md
