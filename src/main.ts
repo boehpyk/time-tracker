@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import PrimeVue from "primevue/config";
+import "primeicons/primeicons.css";
 import Aura from "@primevue/themes/aura";
 import ConfirmationService from "primevue/confirmationservice";
 import ToastService from "primevue/toastservice";

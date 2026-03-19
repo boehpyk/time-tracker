@@ -10,7 +10,7 @@
           :disabled="!reportsStore.reportData || reportsStore.loading"
           @click="previewVisible = true"
         />
-        <ReportExportButton filename="time-tracker-report.pdf" @exported="onExported" />
+        <ReportExportButton default-filename="time-tracker-report.pdf" @exported="onExported" />
       </div>
     </div>
 
@@ -41,7 +41,7 @@
 
       <template #footer>
         <Button label="Close" severity="secondary" @click="previewVisible = false" />
-        <ReportExportButton filename="time-tracker-report.pdf" @exported="onExported" />
+        <ReportExportButton default-filename="time-tracker-report.pdf" @exported="onExported" />
       </template>
     </Dialog>
   </div>
@@ -73,16 +73,18 @@ async function runReport() {
   await reportsStore.fetchReport(localFilter.value)
 }
 
-async function onExported() {
+async function onExported(savedPath: string) {
   // Close preview if open
   previewVisible.value = false
+
+  const filename = savedPath.split('/').pop() ?? savedPath
 
   // Archive all entries matching the current filter
   try {
     const count = await api.archiveReportedEntries(localFilter.value)
     const detail = count > 0
-      ? `Saved as time-tracker-report.pdf. ${count} ${count === 1 ? 'entry' : 'entries'} archived.`
-      : 'Saved as time-tracker-report.pdf.'
+      ? `Saved as ${filename}. ${count} ${count === 1 ? 'entry' : 'entries'} archived.`
+      : `Saved as ${filename}.`
     toast.add({
       severity: 'success',
       summary: 'Export complete',
@@ -94,7 +96,7 @@ async function onExported() {
     toast.add({
       severity: 'success',
       summary: 'Export complete',
-      detail: 'Saved as time-tracker-report.pdf.',
+      detail: `Saved as ${filename}.`,
       life: 3000,
     })
   }

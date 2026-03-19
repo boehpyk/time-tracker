@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import type {
   Project,
   Task,
@@ -136,5 +138,16 @@ export const api = {
   },
   listenTrayToggle(callback: () => void): Promise<() => void> {
     return listen("tray-toggle-timer", callback);
+  },
+
+  // PDF export
+  async savePdfAs(bytes: Uint8Array, defaultFilename: string): Promise<string | null> {
+    const path = await save({
+      defaultPath: defaultFilename,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (path === null) return null;
+    await writeFile(path, bytes);
+    return path;
   },
 };

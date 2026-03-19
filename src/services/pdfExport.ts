@@ -3,11 +3,12 @@ import { jsPDF } from 'jspdf'
 
 /**
  * Captures the element with id="report-printable-area" using html2canvas,
- * then paginates and saves the result as an A4 portrait PDF.
+ * then paginates and returns the result as a raw PDF byte array.
  *
  * Does NOT import from @tauri-apps/api — plain browser-compatible service.
+ * Saving is handled by the caller via tauriApi.savePdfAs().
  */
-export async function exportReportToPdf(filename?: string): Promise<void> {
+export async function generatePdfBytes(): Promise<Uint8Array> {
   const element = document.getElementById('report-printable-area')
   if (!element) {
     throw new Error('Export target #report-printable-area not found in the DOM.')
@@ -64,9 +65,9 @@ export async function exportReportToPdf(filename?: string): Promise<void> {
     if (ctx) {
       ctx.drawImage(
         canvas,
-        0, sourceOffsetPx,          // source x, y
+        0, sourceOffsetPx,           // source x, y
         canvasWidthPx, sliceHeightPx, // source width, height
-        0, 0,                        // destination x, y
+        0, 0,                         // destination x, y
         canvasWidthPx, sliceHeightPx, // destination width, height
       )
     }
@@ -75,8 +76,8 @@ export async function exportReportToPdf(filename?: string): Promise<void> {
     pdf.addImage(
       pageImageData,
       'PNG',
-      marginMm,       // x
-      marginMm,       // y
+      marginMm,        // x
+      marginMm,        // y
       printableWidthMm,
       sliceHeightMm,
     )
@@ -85,5 +86,5 @@ export async function exportReportToPdf(filename?: string): Promise<void> {
     remainingHeightMm -= sliceHeightMm
   }
 
-  pdf.save(filename ?? 'report.pdf')
+  return new Uint8Array(pdf.output('arraybuffer') as ArrayBuffer)
 }

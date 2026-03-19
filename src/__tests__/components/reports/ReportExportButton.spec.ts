@@ -3,22 +3,31 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ReportExportButton from '../../../components/reports/ReportExportButton.vue'
 
 // ---------------------------------------------------------------------------
-// Mock pdfExport service — we do NOT test canvas rendering here.
+// Mocks
 // ---------------------------------------------------------------------------
 
 vi.mock('../../../services/pdfExport', () => ({
-  exportReportToPdf: vi.fn(),
+  generatePdfBytes: vi.fn(),
+}))
+
+vi.mock('../../../services/tauriApi', () => ({
+  api: {
+    savePdfAs: vi.fn(),
+  },
 }))
 
 vi.mock('primevue/usetoast', () => ({
   useToast: () => ({ add: vi.fn() }),
 }))
 
-import { exportReportToPdf } from '../../../services/pdfExport'
+import { generatePdfBytes } from '../../../services/pdfExport'
+import { api } from '../../../services/tauriApi'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const FAKE_BYTES = new Uint8Array([1, 2, 3])
 
 function mountButton(props: Record<string, unknown> = {}) {
   return mount(ReportExportButton, {
@@ -48,57 +57,75 @@ describe('ReportExportButton', () => {
     expect(wrapper.text()).toContain('Export PDF')
   })
 
-  it('calls exportReportToPdf with default filename when clicked', async () => {
-    vi.mocked(exportReportToPdf).mockResolvedValue(undefined)
+  it('calls savePdfAs with default filename and emits exported with the saved path', async () => {
+    vi.mocked(generatePdfBytes).mockResolvedValue(FAKE_BYTES)
+    vi.mocked(api.savePdfAs).mockResolvedValue('/home/user/report.pdf')
+
     const wrapper = mountButton()
     await wrapper.find('button').trigger('click')
     await flushPromises()
-    expect(exportReportToPdf).toHaveBeenCalledWith('report.pdf')
+
+    expect(generatePdfBytes).toHaveBeenCalled()
+    expect(api.savePdfAs).toHaveBeenCalledWith(FAKE_BYTES, 'report.pdf')
+    expect(wrapper.emitted('exported')).toEqual([['/home/user/report.pdf']])
   })
 
-  it('calls exportReportToPdf with the provided filename prop', async () => {
-    vi.mocked(exportReportToPdf).mockResolvedValue(undefined)
-    const wrapper = mountButton({ filename: 'my-report.pdf' })
+  it('calls savePdfAs with the provided defaultFilename prop', async () => {
+    vi.mocked(generatePdfBytes).mockResolvedValue(FAKE_BYTES)
+    vi.mocked(api.savePdfAs).mockResolvedValue('/home/user/my-report.pdf')
+
+    const wrapper = mountButton({ defaultFilename: 'my-report.pdf' })
     await wrapper.find('button').trigger('click')
     await flushPromises()
-    expect(exportReportToPdf).toHaveBeenCalledWith('my-report.pdf')
+
+    expect(api.savePdfAs).toHaveBeenCalledWith(FAKE_BYTES, 'my-report.pdf')
+  })
+
+  it('does not emit exported when user cancels the save dialog', async () => {
+    vi.mocked(generatePdfBytes).mockResolvedValue(FAKE_BYTES)
+    vi.mocked(api.savePdfAs).mockResolvedValue(null)
+
+    const wrapper = mountButton()
+    await wrapper.find('button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.emitted('exported')).toBeUndefined()
   })
 
   it('button is disabled while export is in progress', async () => {
-    // exportReportToPdf will not resolve until we advance
-    let resolve!: () => void
-    vi.mocked(exportReportToPdf).mockReturnValue(
-      new Promise<void>((r) => { resolve = r }),
+    let resolve!: (v: string) => void
+    vi.mocked(generatePdfBytes).mockReturnValue(
+      new Promise<Uint8Array>((r) => { resolve = (v) => r(v as unknown as Uint8Array) }),
     )
 
     const wrapper = mountButton()
     await wrapper.find('button').trigger('click')
-
-    // Still in-flight — button should be disabled
     await wrapper.vm.$nextTick()
+
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
 
-    // Resolve the export
-    resolve()
+    resolve('/home/user/report.pdf')
     await flushPromises()
-
-    // Now re-enabled
-    expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
   })
 
   it('re-enables button after export resolves', async () => {
-    vi.mocked(exportReportToPdf).mockResolvedValue(undefined)
+    vi.mocked(generatePdfBytes).mockResolvedValue(FAKE_BYTES)
+    vi.mocked(api.savePdfAs).mockResolvedValue('/home/user/report.pdf')
+
     const wrapper = mountButton()
     await wrapper.find('button').trigger('click')
     await flushPromises()
+
     expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
   })
 
   it('re-enables button after export rejects', async () => {
-    vi.mocked(exportReportToPdf).mockRejectedValue(new Error('canvas error'))
+    vi.mocked(generatePdfBytes).mockRejectedValue(new Error('canvas error'))
+
     const wrapper = mountButton()
     await wrapper.find('button').trigger('click')
     await flushPromises()
+
     expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
   })
 })

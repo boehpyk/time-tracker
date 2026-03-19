@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { exportReportToPdf } from '../../services/pdfExport'
+import { generatePdfBytes } from '../../services/pdfExport'
 
 // ---------------------------------------------------------------------------
 // Module-level mocks — html2canvas and jsPDF are not available in jsdom.
@@ -20,11 +20,6 @@ import { jsPDF } from 'jspdf'
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Build a canvas-like object whose getContext and toDataURL are controlled.
- * We use a plain object rather than a real HTMLCanvasElement so we never
- * call document.createElement inside the spy interceptor.
- */
 function makeCanvasLike(widthPx: number, heightPx: number) {
   return {
     width: widthPx,
@@ -40,7 +35,7 @@ function makeMockPdf() {
   return {
     addPage: vi.fn(),
     addImage: vi.fn(),
-    save: vi.fn(),
+    output: vi.fn().mockReturnValue(new ArrayBuffer(8)),
   }
 }
 
@@ -48,8 +43,7 @@ function makeMockPdf() {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('exportReportToPdf', () => {
-  // Track whether we need to restore createElement after each test
+describe('generatePdfBytes', () => {
   let restoreCreateElement: (() => void) | null = null
 
   beforeEach(() => {
@@ -64,10 +58,7 @@ describe('exportReportToPdf', () => {
     }
   })
 
-  // Helper: spy on document.createElement so that any 'canvas' request returns
-  // a fake canvas-like object.  All other tags fall through to the real method.
   function spyCreateElement(widthPx: number, heightPx: number) {
-    // Capture the real method BEFORE installing the spy
     const realCreate = document.createElement.bind(document)
     const spy = vi.spyOn(document, 'createElement').mockImplementation(
       (tag: string) => {
@@ -84,7 +75,7 @@ describe('exportReportToPdf', () => {
     const existing = document.getElementById('report-printable-area')
     if (existing) existing.remove()
 
-    await expect(exportReportToPdf()).rejects.toThrow(
+    await expect(generatePdfBytes()).rejects.toThrow(
       '#report-printable-area not found',
     )
   })
@@ -102,7 +93,7 @@ describe('exportReportToPdf', () => {
 
     spyCreateElement(840, 500)
 
-    await exportReportToPdf()
+    await generatePdfBytes()
 
     expect(html2canvas).toHaveBeenCalledWith(el, {
       scale: 2,
@@ -113,7 +104,7 @@ describe('exportReportToPdf', () => {
     el.remove()
   })
 
-  it('creates a jsPDF in portrait A4 and calls save with default filename', async () => {
+  it('creates a jsPDF in portrait A4 and returns a Uint8Array', async () => {
     const el = document.createElement('div')
     el.id = 'report-printable-area'
     document.body.appendChild(el)
@@ -126,30 +117,11 @@ describe('exportReportToPdf', () => {
 
     spyCreateElement(840, 500)
 
-    await exportReportToPdf()
+    const result = await generatePdfBytes()
 
     expect(jsPDF).toHaveBeenCalledWith('portrait', 'mm', 'a4')
-    expect(mockPdf.save).toHaveBeenCalledWith('report.pdf')
-
-    el.remove()
-  })
-
-  it('saves with a custom filename when provided', async () => {
-    const el = document.createElement('div')
-    el.id = 'report-printable-area'
-    document.body.appendChild(el)
-
-    const fakeCanvas = makeCanvasLike(840, 500)
-    vi.mocked(html2canvas).mockResolvedValue(fakeCanvas as unknown as HTMLCanvasElement)
-
-    const mockPdf = makeMockPdf()
-    vi.mocked(jsPDF).mockImplementation(() => mockPdf as unknown as jsPDF)
-
-    spyCreateElement(840, 500)
-
-    await exportReportToPdf('my-custom-report.pdf')
-
-    expect(mockPdf.save).toHaveBeenCalledWith('my-custom-report.pdf')
+    expect(mockPdf.output).toHaveBeenCalledWith('arraybuffer')
+    expect(result).toBeInstanceOf(Uint8Array)
 
     el.remove()
   })
@@ -169,9 +141,8 @@ describe('exportReportToPdf', () => {
 
     spyCreateElement(840, 5000)
 
-    await exportReportToPdf()
+    await generatePdfBytes()
 
-    // addPage called once per extra page; addImage called once per page total
     expect(mockPdf.addPage).toHaveBeenCalled()
     expect(mockPdf.addImage).toHaveBeenCalledTimes(mockPdf.addPage.mock.calls.length + 1)
 

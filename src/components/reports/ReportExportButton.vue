@@ -13,16 +13,17 @@
 import { ref } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
-import { exportReportToPdf } from '../../services/pdfExport'
+import { generatePdfBytes } from '../../services/pdfExport'
+import { api } from '../../services/tauriApi'
 
 const props = withDefaults(defineProps<{
-  filename?: string
+  defaultFilename?: string
 }>(), {
-  filename: 'report.pdf',
+  defaultFilename: 'report.pdf',
 })
 
 const emit = defineEmits<{
-  exported: []
+  exported: [savedPath: string]
 }>()
 
 const toast = useToast()
@@ -33,8 +34,11 @@ async function handleExport() {
 
   isExporting.value = true
   try {
-    await exportReportToPdf(props.filename)
-    emit('exported')
+    const bytes = await generatePdfBytes()
+    const savedPath = await api.savePdfAs(bytes, props.defaultFilename)
+    if (savedPath !== null) {
+      emit('exported', savedPath)
+    }
   } catch (err) {
     toast.add({
       severity: 'error',
