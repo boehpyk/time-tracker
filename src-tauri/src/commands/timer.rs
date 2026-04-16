@@ -152,7 +152,7 @@ pub async fn discard_idle_time(
 
 async fn fetch_entry(pool: &SqlitePool, id: i64) -> Result<TimeEntry, String> {
     sqlx::query_as::<_, TimeEntry>(
-        "SELECT id, task_id, start_time, end_time, notes, created_at, updated_at
+        "SELECT id, task_id, start_time, end_time, notes, archived, created_at, updated_at
          FROM time_entries WHERE id = ?",
     )
     .bind(id)
